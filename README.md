@@ -1,4 +1,4 @@
-# DocuemntReader
+# DocumentReader
 Reads basic text documents and parses for their questions.
 This will eventually be able to read less common files like PDF and spreadsheets for questions
 
