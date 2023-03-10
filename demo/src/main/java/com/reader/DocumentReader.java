@@ -28,8 +28,8 @@ public class DocumentReader {
             License licWordToPdf = new License();
             licWordToPdf.setLicense("Aspose.Words.lic");
         } catch (Exception e) {
-            System.err.println("ERR - DocumentReader");
-            System.err.println(e); // make sure to print the error
+            System.err.println("DocumentReaderInitializationException: Error initializing DocumentReader. " +
+                    "Nested Error: " + e); // make sure to print the error
         }
     }
 
@@ -47,25 +47,30 @@ public class DocumentReader {
             this.extension = this.path.substring(path.lastIndexOf("."));
             System.out.println(this.extension);
         } catch (Exception e) {
-            System.err.println("SetDocumentException: Nested Error:" + e); // make sure to print the error
+            System.err.println("SetDocumentReaderException: Error setting up document text. " +
+                    "Nested Error: " + e); // make sure to print the error
         }
 
     }
 
+    /*
+     * readDocument is meant to just read out what the document has without formatting.
+     *
+     */
     public void readDocument() {
         int line = 0;
+        System.out.println("start reading \"" + path + "\"");
         try {
-                System.out.println("DOC - started reading -> " + path);
-                for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
-                    line++;
-                    Paragraph para = (Paragraph) obj;
-                    System.out.println("" + line + " - " + para.toString(SaveFormat.TEXT));
-                }
-                System.out.println("DOC - finished reading");
+            for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
+                line++;
+                Paragraph para = (Paragraph) obj;
+                System.out.println("" + line + " - " + para.toString(SaveFormat.TEXT));
+            }
         } catch (Exception e) {
-            System.err.println("ERR - readDocument");
-            System.err.println(e); // make sure to print the error
+            System.err.println("ReadDocumentReaderException: Error reading document text. " +
+                    "Nested Error: " + e); // make sure to print the error
         }
+        System.out.println("done reading \"" + path + "\"");
     }
 
     public ArrayList<String> getDocumentText() {
@@ -80,8 +85,8 @@ public class DocumentReader {
             }
 
         } catch (Exception e) {
-            System.err.println("ERR - getDocumentText. # lines read=" + numberLinesRead);
-            System.err.println(e); // make sure to print the error
+            System.err.println("GetDocumentReaderTextException: Error getting document text. " +
+                    "# lines read=" + numberLinesRead + "Nested Error: " + e); // make sure to print the error
         }
 
         return documentText;
@@ -91,21 +96,30 @@ public class DocumentReader {
      * findQuestions() will run through document items and store them into
      * a list of strings.
      */
-    public void findQuestions() throws Exception {
+    public void findQuestions() {
         /*
          * The way I find questions in the documents (word documents) is by
          */
         int line = 0;
-        for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
-            line++;
-            Paragraph para = (Paragraph) obj;
-            if (para.getListFormat().isListItem()) {
-                byte[] bites = para.getListFormat().getListLevel().getNumberFormat().getBytes(StandardCharsets.UTF_8);
+        try {
+            for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
+                line++;
+                Paragraph para = (Paragraph) obj;
+                // This is to prevent error for calling .getListLevel(), etc. on null objects
+                if (para.getListFormat().isListItem()) {
+                    // For the non-null objects we need to get how the "dots/letters" are formatted
+                    byte[] bites = para.getListFormat().getListLevel().getNumberFormat().getBytes(StandardCharsets.UTF_8);
 
-                if (bites.length == 2) // 2 length is how long the bytes for numbered lists are
-                    // There is no other marker that I have found as of yet
-                    System.out.println("" + line + " - " + para.toString(SaveFormat.TEXT));
+                    // The ordered list that we are looking for happen to only have a byte array size of 2
+                    // I am not sure why exactly, but this could break on larger lists
+                    if (bites.length == 2)
+                        // There is no other marker that I have found as of yet
+                        System.out.println("" + line + " - " + para.toString(SaveFormat.TEXT));
+                }
             }
+        } catch (Exception e) {
+            System.err.println("DocumentReaderFindQuestionsException: Error finding questions from document text. " +
+                    "Nested Error: " + e); // make sure to print the error
         }
 
         for (String q : this.queries) {
@@ -117,7 +131,7 @@ public class DocumentReader {
         return this.queries;
     }
 
-    public String getExtension(){
+    public String getExtension() {
         return this.extension;
     }
 }
