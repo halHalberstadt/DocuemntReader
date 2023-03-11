@@ -12,6 +12,7 @@ import com.aspose.words.SaveFormat;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 // imports for regex
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -63,12 +64,12 @@ public class DocumentReader {
         } catch (Exception e) {
             this.path = "[NOT SUPPORTED] " + documentPath;
             // Specifies if failure is due to unsupported types or other.
-            if(e.getMessage().contains("Pdf format is not supported on this platform. Use .NET Standard"))
+            if (e.getMessage().contains("Pdf format is not supported on this platform. Use .NET Standard"))
                 System.err.println("com.reader.SetDocumentReaderException: File Not Supported. " +
                         "Nested Error: " + e);
             else
                 System.err.println("com.reader.SetDocumentReaderException: Error setting up document text. " +
-                    "Nested Error: " + e); // make sure to print the error
+                        "Nested Error: " + e); // make sure to print the error
         }
 
     }
@@ -125,9 +126,9 @@ public class DocumentReader {
          */
         System.out.println("start finding questions @ \"" + path + "\"");
         try {
-            //TODO need to make option for non-formatted questions which we need to get from the user.
+            // find all questions we can possibly get from the document
             this.findFormattedQuestions();
-            // this.findUnformattedQuestions();
+            this.findUnformattedQuestions();
         } catch (Exception e) {
             System.err.println("com.reader.DocumentReaderFindQuestionsException: Error finding questions from document text. " +
                     "Nested Error: " + e); // make sure to print the error
@@ -150,7 +151,7 @@ public class DocumentReader {
      * a return type.
      * NOTE: this throws an error due to the nature of the objects used
      */
-    private void findFormattedQuestions() throws Exception{
+    private void findFormattedQuestions() throws Exception {
         for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
             Paragraph para = (Paragraph) obj;
             // if the paragraph is in an ordered list, save question as a query.
@@ -166,7 +167,7 @@ public class DocumentReader {
      * this method just makes sure that the paragraph is an ordered list
      * and thus should be saved.
      */
-    private boolean isFormattedOrderedList(Paragraph paragraph){
+    private boolean isFormattedOrderedList(Paragraph paragraph) {
         // This is to prevent error for calling .getListLevel(), etc. on null objects.
         if (paragraph.getListFormat().isListItem()) {
             // For the non-null objects we need to get how the "dots/letters" are formatted.
@@ -184,23 +185,44 @@ public class DocumentReader {
      * NOTE: this throws an error due to the nature of the objects used,
      * and that this is less accurate or not as assured to be accurate.
      */
-    private void findUnformattedQuestions() throws Exception{
+    private void findUnformattedQuestions() throws Exception {
         // TODO test this method findUnformattedQuestions()
         /*
          * pattern finds any leading whitespace followed by a letter or number followed by
          * any ending list character ('.', ')', or '-')
          */
-        String pattern = "^\\s*[\\w|\\d]+[.)-]";
+        String pattern = "^\\s*[\\w|\\d]+[\\s]?[.)-]";
         Pattern patternFinder = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
         for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
             Paragraph para = (Paragraph) obj;
 
             Matcher matcher = patternFinder.matcher(para.toString(SaveFormat.TEXT));
             // If regex is found in that line, save
-            if(matcher.find()) {
-                this.queries.add(para.toString(SaveFormat.TEXT));
+            if (matcher.find()) {
+                // get string version to convert string into formatted version
+                String query = para.toString(SaveFormat.TEXT);
+                // find last char of ordered list marker then trim whitespace.
+                this.queries.add(query.substring(getQuestionIndex(query)).trim());
             }
         }
+    }
+
+    /*
+     * getQuestionIndex() finds the first letter in the question found in
+     * findUnformattedQuestions() with the index being the location of the
+     * first character.
+     * NOTE: not found is -1
+     */
+    private int getQuestionIndex(String string) {
+        for ( int location = 0; location < string.length(); location++) {
+            // if we find the last part of the "question marker" ('.', ')' or '-')
+            if ((string.charAt(location) == '.' ||
+                    string.charAt(location) == ')' ||
+                    string.charAt(location) == '-')) {
+                return location+1;
+            }
+        }
+        return -1;
     }
 
     /*
