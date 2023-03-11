@@ -135,10 +135,7 @@ public class DocumentReader {
         }
         System.out.println("done finding questions @ \"" + path + "\"");
 
-        int queryNumber = 0;
-        for (String q : this.queries) {
-            System.out.println("Query #" + (++queryNumber) + " found: \"" + q + "\"");
-        }
+        this.printAllQueries();
     }
 
     /*
@@ -146,7 +143,12 @@ public class DocumentReader {
      */
 
     /*
-     * findFormattedQuestions goes through a loop finding any formatted
+     * queriesToTxt() this function saves queries found into a text file
+     * for other program's use.
+     */
+
+    /*
+     * findFormattedQuestions() goes through a loop finding any formatted
      * questions in the document, and saves them to the object not needing
      * a return type.
      * NOTE: this throws an error due to the nature of the objects used
@@ -202,7 +204,7 @@ public class DocumentReader {
                 // get string version to convert string into formatted version
                 String query = para.toString(SaveFormat.TEXT);
                 // find last char of ordered list marker then trim whitespace.
-                this.queries.add(query.substring(getQuestionIndex(query)).trim());
+                this.queries.add("(unformatted) " + query.substring(getQuestionIndex(query)).trim());
             }
         }
     }
@@ -223,6 +225,16 @@ public class DocumentReader {
             }
         }
         return -1;
+    }
+
+    public void printAllQueries(){
+        int queryNumber = 0;
+        for (String q : this.queries) {
+            System.out.println("Query #" + (++queryNumber) + " found: \"" + q + "\"");
+        }
+        if(queryNumber < 1){
+            System.out.println("No queries found.");
+        }
     }
 
     /*
