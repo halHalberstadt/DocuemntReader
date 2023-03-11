@@ -54,14 +54,20 @@ public class DocumentReader {
      */
     public void setDocument(String documentPath) {
         this.document = null; // reset document to ensure document isn't re-read.
+        this.queries.clear(); // clear queries for each document to not confuse where each came from.
         try {
             // set basic variables for document reading.
             this.path = documentPath;
             this.document = new Document(documentPath);
             this.extension = this.path.substring(path.lastIndexOf("."));
         } catch (Exception e) {
-            this.document = null; // reset document to ensure document isn't re-read.
-            System.err.println("com.reader.SetDocumentReaderException: Error setting up document text. " +
+            this.path = "[NOT SUPPORTED] " + documentPath;
+            // Specifies if failure is due to unsupported types or other.
+            if(e.getMessage().contains("Pdf format is not supported on this platform. Use .NET Standard"))
+                System.err.println("com.reader.SetDocumentReaderException: File Not Supported. " +
+                        "Nested Error: " + e);
+            else
+                System.err.println("com.reader.SetDocumentReaderException: Error setting up document text. " +
                     "Nested Error: " + e); // make sure to print the error
         }
 
@@ -147,30 +153,54 @@ public class DocumentReader {
     private void findFormattedQuestions() throws Exception{
         for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
             Paragraph para = (Paragraph) obj;
-            // This is to prevent error for calling .getListLevel(), etc. on null objects
-            if (para.getListFormat().isListItem()) {
-                // For the non-null objects we need to get how the "dots/letters" are formatted
-                byte[] bites = para.getListFormat().getListLevel().getNumberFormat().getBytes(StandardCharsets.UTF_8);
-                // The ordered list that we are looking for happen to only have a byte array size of 2
-                // I am not sure why exactly, but this could break on larger lists
-                if (bites.length == 2) {
-                    // I need to trim up the line found in the formatted list.
-                    String questionFound = para.toString(SaveFormat.TEXT).trim();
-//                        System.out.println("" + line + " - " + questionFound);
-                    this.queries.add(questionFound);
-                }
+            // if the paragraph is in an ordered list, save question as a query.
+            if (isFormattedOrderedList(para)) {
+                // I need to trim up the line found in the formatted list.
+                this.queries.add(para.toString(SaveFormat.TEXT).trim());
             }
         }
     }
 
-    /* TODO findUnformattedQuestions()
+    /*
+     * isFormattedOrderedList()
+     * this method just makes sure that the paragraph is an ordered list
+     * and thus should be saved.
+     */
+    private boolean isFormattedOrderedList(Paragraph paragraph){
+        // This is to prevent error for calling .getListLevel(), etc. on null objects.
+        if (paragraph.getListFormat().isListItem()) {
+            // For the non-null objects we need to get how the "dots/letters" are formatted.
+            byte[] bites = paragraph.getListFormat().getListLevel().getNumberFormat().getBytes(StandardCharsets.UTF_8);
+            // The ordered list that we are looking for happen to only have a byte array size of 2
+            // I am not sure why exactly, but this could break on larger lists due to data storage.
+            return bites.length == 2;
+        }
+        return false;
+    }
+
+    /*
      * findUnformattedQuestions goes through a loop finding any questions that
      * are in plain text using regex to find them.
      * NOTE: this throws an error due to the nature of the objects used,
      * and that this is less accurate or not as assured to be accurate.
      */
     private void findUnformattedQuestions() throws Exception{
+        // TODO test this method findUnformattedQuestions()
+        /*
+         * pattern finds any leading whitespace followed by a letter or number followed by
+         * any ending list character ('.', ')', or '-')
+         */
+        String pattern = "^\\s*[\\w|\\d]+[.)-]";
+        Pattern patternFinder = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        for (Object obj : this.document.getChildNodes(NodeType.PARAGRAPH, true)) {
+            Paragraph para = (Paragraph) obj;
 
+            Matcher matcher = patternFinder.matcher(para.toString(SaveFormat.TEXT));
+            // If regex is found in that line, save
+            if(matcher.find()) {
+                this.queries.add(para.toString(SaveFormat.TEXT));
+            }
+        }
     }
 
     /*
